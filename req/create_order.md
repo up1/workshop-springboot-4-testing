@@ -170,3 +170,20 @@ Table : products
     "error": "Server error"
   }
   ``` 
+
+  ## Test cases in table format
+
+  | Test Case | Request Body | Expected Response |
+  |-----------|--------------|------------------|
+  | Valid order | `{ "customerId": 1, "quantity": 2, "totalPrice": 40.0, "products": [ { "productId": 1, "quantity": 2 } ] }` | `201 Created` |
+  | Customer does not exist | `{ "customerId": 999, "quantity": 2, "totalPrice": 40.0, "products": [ { "productId": 1, "quantity": 2 } ] }` | `400 Bad Request` |
+  | Product does not exist | `{ "customerId": 1, "quantity": 2, "totalPrice": 40.0, "products": [ { "productId": 999, "quantity": 2 } ] }` | `400 Bad Request` |
+  | Insufficient stock | `{ "customerId": 1, "quantity": 2, "totalPrice": 40.0, "products": [ { "productId": 1, "quantity": 100 } ] }` | `400 Bad Request` |
+  | Invalid request | `{ "customerId": 1, "quantity": -1, "totalPrice": 40.0, "products": [ { "productId": 1, "quantity": 2 } ] }` | `400 Bad Request` |
+  | Server error | `{ "customerId": 1, "quantity": 2, "totalPrice": 40.0, "products": [ { "productId": 1, "quantity": 2 } ] }` | `500 Internal Server Error` |  
+  | Missing products | `{ "customerId": 1, "quantity": 2, "totalPrice": 40.0, "products": [] }` | `400 Bad Request` |
+  | Missing total price | `{ "customerId": 1, "quantity": 2, "products": [ { "productId": 1, "quantity": 2 } ] }` | `400 Bad Request` |
+  | Missing customer ID | `{ "quantity": 2, "totalPrice": 40.0, "products": [ { "productId": 1, "quantity": 2 } ] }` | `400 Bad Request` |
+  | Missing quantity | `{ "customerId": 1, "totalPrice": 40.0, "products": [ { "productId": 1, "quantity": 2 } ] }` | `400 Bad Request` |
+  | Missing all fields | `{ }` | `400 Bad Request` |
+  | Missing request body | `` | `400 Bad Request` |
