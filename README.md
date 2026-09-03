@@ -8,3 +8,12 @@
   * TestContainers
 * Docker
   * Docker Compose
+
+## Start data
+
+To start the PostgreSQL database using Docker Compose, run the following command:
+
+```bash
+$docker-compose up -d
+$docker-compose ps
+```
