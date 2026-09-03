@@ -11,7 +11,10 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.testcontainers.containers.GenericContainer;
 
@@ -110,5 +113,77 @@ class OrderControllerFailureIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isEqualTo(new ErrorResponse("Invalid order data"));
+    }
+
+    @Test
+    void returnsBadRequestWhenTotalPriceIsMissing() {
+        String json = """
+                { "customerId": 1, "quantity": 2, "products": [ { "productId": 1, "quantity": 2 } ] }
+                """;
+
+        ResponseEntity<ErrorResponse> response = postRawJson(json);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isEqualTo(new ErrorResponse("Invalid order data"));
+    }
+
+    @Test
+    void returnsBadRequestWhenCustomerIdIsMissing() {
+        String json = """
+                { "quantity": 2, "totalPrice": 40.0, "products": [ { "productId": 1, "quantity": 2 } ] }
+                """;
+
+        ResponseEntity<ErrorResponse> response = postRawJson(json);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isEqualTo(new ErrorResponse("Invalid order data"));
+    }
+
+    @Test
+    void returnsBadRequestWhenQuantityIsMissing() {
+        String json = """
+                { "customerId": 1, "totalPrice": 40.0, "products": [ { "productId": 1, "quantity": 2 } ] }
+                """;
+
+        ResponseEntity<ErrorResponse> response = postRawJson(json);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isEqualTo(new ErrorResponse("Invalid order data"));
+    }
+
+    @Test
+    void returnsBadRequestWhenAllFieldsAreMissing() {
+        ResponseEntity<ErrorResponse> response = postRawJson("{ }");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isEqualTo(new ErrorResponse("Invalid order data"));
+    }
+
+    @Test
+    void returnsBadRequestWhenRequestBodyIsMissing() {
+        ResponseEntity<ErrorResponse> response = postRawJson("");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isEqualTo(new ErrorResponse("Invalid order data"));
+    }
+
+    @Test
+    void returnsInternalServerErrorWhenInventoryApiFails() {
+        InventoryApiStub.stubServerError(inventoryApiContainer, 1, 2);
+
+        OrderRequest request = new OrderRequest(1L, 2, new BigDecimal("40.0"),
+                List.of(new OrderProductRequest(1L, 2)));
+
+        ResponseEntity<ErrorResponse> response = restTemplate.postForEntity("/api/orders", request,
+                ErrorResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isEqualTo(new ErrorResponse("An unexpected error occurred"));
+    }
+
+    private ResponseEntity<ErrorResponse> postRawJson(String json) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return restTemplate.postForEntity("/api/orders", new HttpEntity<>(json, headers), ErrorResponse.class);
     }
 }
