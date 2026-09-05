@@ -96,6 +96,64 @@ Content-Type: application/json
 8. Handle any errors and return appropriate error responses.
 9. Return an error if the validation fails.
 
+Diagram
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client
+    participant API as Order Controller
+    participant Validator
+    participant DB as Database
+    participant Inventory as Inventory Service (HTTP)
+
+    Client->>API: POST /orders (Order Data)
+    
+    API->>Validator: validateSchema(inputData)
+    alt Schema Invalid
+        Validator-->>API: ValidationError
+        API-->>Client: 400 Bad Request (Validation Errors)
+    else Schema Valid
+        Validator-->>API: Data Validated
+    end
+
+    API->>DB: findCustomerById(customerId)
+    alt Customer Not Found
+        DB-->>API: null
+        API-->>Client: 404 Not Found (Customer)
+    else Customer Exists
+        DB-->>API: Customer Record
+    end
+
+    API->>DB: findProductsByIds(productIds)
+    alt Products Missing
+        DB-->>API: Partial/Empty List
+        API-->>Client: 404 Not Found (Products)
+    else Products Exist
+        DB-->>API: List of Product Details
+    end
+
+    loop Each Product
+        API->>Inventory: GET /stock/{productId}
+        alt Stock Insufficient
+            Inventory-->>API: 200 OK (available: false)
+            API-->>Client: 409 Conflict (Out of Stock)
+        else Stock Available
+            Inventory-->>API: 200 OK (available: true)
+        end
+    end
+
+    API->>API: calculateTotals(items)
+    alt Totals Mismatch
+        API-->>Client: 400 Bad Request (Price/Qty Mismatch)
+    else Totals Match
+        API->>DB: createOrder(orderData)
+        DB-->>API: Order Created (ID, Timestamp)
+        API-->>Client: 201 Created (Order Object)
+    end
+
+    note right of API: Error Handler catches unexpected exceptions and returns 500 Internal Server Error
+```
+
 ## Database to store orders
 
 Table : orders
